@@ -1,5 +1,5 @@
 # Jupyter-Periscope
-Jupyter-Lab toolset to make screenshots and label them from corporate automation
+Locate an image and execute a Python-based, step-by-step automation system add-on for Jupyter Lab.
 
 ## Description
 Ultra simple toolset to create display based autoamtions.
