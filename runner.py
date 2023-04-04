@@ -62,40 +62,62 @@ class step:
         for loc in locations_found:
             self.locations.append((loc.left+offset[0],loc.top+offset[1]))
             
-
+# later replace with string at the moemnt importing from file as thonny has hard time with the ultra long lines
 import workflow
 workflow = workflow.workflow
 
 class controllerButton(Button):
+    """
+    Customization of the default class to have acess to app
+    in the 'on_press' event
+    """
     def __init__(self, myself, **kwargs):
         super(controllerButton, self).__init__(**kwargs)
         self.app = myself
+        
+    def on_press(self):
+        """
+        Toggle between play and pause
+        """
+        if self.app.status == 'playing':
+            self.app.paused = True
+            self.app.status = 'pasued'
+            self.text = 'Play'
+        elif self.app.status == 'paused':
+            # for some reason I could not use gui.getAllWindiwByTitle
+            gui.hotkey('alt','tab')
+            self.app.paused = False
+            self.app.status = 'playing'
+            self.text = 'Pause'          
+
+class runnerUI(App):
+    """
+    Kivy app instance for the local script runner (self contaioned) app
+    """
+    def __init__(self, **kwargs):
+        """
+        Setup local variables to control the playback/pause and UI of the front-end
+        """
+        super(runnerUI,self).__init__(**kwargs)
+        
         self.status = 'paused'
         self.commands = workflow
         self.command_index = 0
         self.paused = True
         self.disabled = False
+        # 
+        self.playback_button = controllerButton(self,text="Play",size_hint=(1,.6))
         # start the backend thread
-        self.thread = threading.Thread(target=self.execute_commands)
+        self.thread = threading.Thread(target=self._run_stack)
         self.thread.start()
-
-    def on_press(self):
         
-        if self.status == 'playing':
-            self.paused = True
-            self.status = 'pasued'
-            self.text = 'Play'
-        elif self.status == 'paused':
-            # for some reason I could not use gui.getAllWindiwByTitle
-            gui.hotkey('alt','tab')
-            self.paused = False
-            self.status = 'playing'
-            self.text = 'Pause'
-            
-    def execute_commands(self):
+    def _run_stack(self):
+        """
+        Function to run throught the stack once, while making it possible to pause at every step
+        """
         while self.command_index < len(self.commands):
             if self.paused:
-                time.sleep(0.5)
+                time.sleep(1)
             else:
                 command = self.commands[self.command_index]
                 try:
@@ -106,14 +128,14 @@ class controllerButton(Button):
                 # update done list
                 self.command_index += 1
                 # update progress bar
-                self.app.progressbar.value = self.command_index/len(self.commands)*100
-                self.app.progressbar_label.text = str(round(self.app.progressbar.value))+"%"
+                self.progressbar.value = self.command_index/len(self.commands)*100
+                self.progressbar_label.text = str(round(self.progressbar.value))+"%"
             
         self.status = 'stopped'
-        self.text = 'Stopped'
-        self.disabled = True 
-
-class runnerUI(App):
+        self.playback_button.text = 'Stopped'
+        self.playback_button.disabled = True 
+        
+    
     def on_start(self, *args):
         Window.set_title("runner")
         register_topmost(Window,"runner")
@@ -129,14 +151,14 @@ class runnerUI(App):
         self.current_step = 0
         self.script_running = False
         
-        self.playback_button = controllerButton(self,text="Play",size_hint=(1,.6))
+        
 
         # 
         def on_move(x, y):
             # pause playback if mause is moved
-            if self.playback_button.status == 'playing':
-                self.playback_button.status = 'paused'
-                self.playback_button.paused = True
+            if self.status == 'playing':
+                self.status = 'paused'
+                self.paused = True
                 self.playback_button.text = 'Play'
                 
         self.mouselistener = mouse.Listener(on_move=on_move)
@@ -169,15 +191,6 @@ class runnerUI(App):
         Window.size = (400,600)
         
         return self.window
-    
-    def toggle_playback(self):
-        if self.script_running==True:
-            self.script_running = False
-            print(self.playback_button.text)
-        else:
-            self.script_running = True
-            self.status_label.text = 'go...'
-            print(self.playback_button.text)
 
 r = runnerUI()
 r.run()
